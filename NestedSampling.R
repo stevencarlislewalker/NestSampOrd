@@ -57,14 +57,14 @@ lfun <- mkLike(Y)
 rho <- environment(lfun)
 theta <- rho$theta
 lfun(theta)
-thetaList <- rho$thetaInv(theta)
-thetaList$x[] <- rnorm(52)
-theta <- do.call(rho$thetaFun, thetaList)
-opt <- optim(theta, lfun, method = "BFGS",
-             control = list(maxit = 500,
-                 trace = 10))
-opt
-rho$thetaInv(opt$par)
+## thetaList <- rho$thetaInv(theta)
+## thetaList$x[] <- rnorm(52)
+## theta <- do.call(rho$thetaFun, thetaList)
+## opt <- optim(theta, lfun, method = "BFGS",
+##              control = list(maxit = 500,
+##                  trace = 10))
+## opt
+## rho$thetaInv(opt$par)
 
 theta0 <- replicate(100, rho$rPrior())
 lfun0 <- apply(theta0, 2, lfun)
@@ -74,26 +74,37 @@ lev <- 0
 
 
 theta1 <- theta0
-theta1[, 1] <- theta0[,which.min(abs(lfun0 - q0[2]))]
+lfun0[wm <- which.min(abs(lfun0 - q0[2]))]
+theta1[, 1] <- theta0[, wm]
 
 
 for(i in 2:100) {
-    print(i)
-    prop <- theta1[, i-1] + rho$rProp()
-    print(lfun(prop) > q0[1])
-    if(lfun(prop) > q0[1]) {
-        aprob <- min(1, exp(rho$dPrior(prop) -
-                            rho$dPrior(theta1[, i-1])))
+    if(runif(1) < 0.5) lev <- 1*ifelse(lev, 0, 1)
+    print("iter"); print(i)
+    print("lev"); print(lev)
+    if(lev == 0) {
+        theta1[, i] <- rho$rPrior()
     } else {
-        aprob <- 0
-    }
-    if(runif(1) < aprob) {
-        theta1[, i] <- prop
-    } else {
-        theta1[, i] <- theta1[, i-1]
+        prop <- theta1[, i-1] + rho$rProp()
+        if(lfun(prop) > q0[1]) {
+            aprob <- min(1, exp(rho$dPrior(prop) -
+                                rho$dPrior(theta1[, i-1])))
+        } else {
+            aprob <- 0
+        }
+        uu <- runif(1)
+        print("aprob, uu"); print(aprob); print(uu)
+        if(uu < aprob) {
+            theta1[, i] <- prop
+        } else {
+            theta1[, i] <- theta1[, i-1]
+        }
     }
 }
+    
+    
+    
 
 lfun1 <- apply(theta1, 2, lfun)
-plot(1:100, lfun1)
-plot(1:100, apply(theta1, 2, rho$dPrior))
+plot(1:100, lfun1, type = "l")
+plot(1:100, apply(theta1, 2, rho$dPrior), type = "l")
