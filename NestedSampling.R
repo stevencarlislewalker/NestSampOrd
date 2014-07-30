@@ -1,4 +1,3 @@
-
 mkLike <- function(Y) {
     local({
         Y <- Y
@@ -45,7 +44,7 @@ mkLike <- function(Y) {
         dev <- binomial()$aic
         linkinv <- binomial()$linkinv
         function(theta) {
-            dev(Y, 1, linkinv(etaFun(theta, n, m)), 1)
+            -0.5*dev(Y, 1, linkinv(etaFun(theta, n, m)), 1)
         }
     })
 }
@@ -57,6 +56,10 @@ lfun <- mkLike(Y)
 rho <- environment(lfun)
 theta <- rho$theta
 lfun(theta)
+dfun <- function(theta) -2*lfun(theta)
+opt <- optim(theta, dfun, method = "BFGS",
+             control = list(maxit = 500, trace = 10))
+
 ## thetaList <- rho$thetaInv(theta)
 ## thetaList$x[] <- rnorm(52)
 ## theta <- do.call(rho$thetaFun, thetaList)
@@ -77,12 +80,12 @@ theta1 <- theta0
 lfun0[wm <- which.min(abs(lfun0 - q0[2]))]
 theta1[, 1] <- theta0[, wm]
 
-
+lev <- rep(0, 100)
 for(i in 2:100) {
-    if(runif(1) < 0.5) lev <- 1*ifelse(lev, 0, 1)
+    if(runif(1) < 0.5) lev[i] <- 1*ifelse(lev[i], 0, 1)
     print("iter"); print(i)
-    print("lev"); print(lev)
-    if(lev == 0) {
+    print("lev"); print(lev[i])
+    if(lev[i] == 0) {
         theta1[, i] <- rho$rPrior()
     } else {
         prop <- theta1[, i-1] + rho$rProp()
@@ -101,10 +104,12 @@ for(i in 2:100) {
         }
     }
 }
-    
-    
-    
+
+
 
 lfun1 <- apply(theta1, 2, lfun)
-plot(1:100, lfun1, type = "l")
-plot(1:100, apply(theta1, 2, rho$dPrior), type = "l")
+par(mfrow = c(2, 1))
+plot(1:200, c(lfun0, lfun1), type = "o", col = c("red","blue")[c(rep(1, 100),
+                                             c(lev[-length(lev)], 1) + 1)])
+abline(h = q0)
+plot(1:200, apply(cbind(theta0, theta1), 2, rho$dPrior), type = "o", col = c("red","blue")[c(rep(1, 100), c(lev[-length(lev)], 1) + 1)])
